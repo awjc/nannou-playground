@@ -3,17 +3,10 @@ use rand::Rng;
 use rand::SeedableRng;
 use std::time::Instant;
 
-struct WindowSize {
-    w: u32,
-    h: u32,
-}
-impl WindowSize {
-    const fn half_w(&self) -> f32 { self.w as f32 / 2.0 }
-    const fn half_h(&self) -> f32 { self.h as f32 / 2.0 }
-}
-const WINDOW: WindowSize = WindowSize { w: 1024, h: 768 };
+const INITIAL_WINDOW_SIZE: Vec2 = Vec2::new( 1024., 768. );
 
-const NUM_CIRCLES: u16 = 20;
+const NUM_CIRCLES: u16 = 40;
+const SPEED_LIMIT: f32 = 400.; // pixels/sec
 
 fn main() {
     nannou::app(model).update(update).run();
@@ -27,6 +20,7 @@ struct Circle {
 
 struct Model {
     _window: Entity,
+    window_size: Vec2,
     rng: rand::rngs::StdRng,
     circles: Vec<Circle>,
     last_update: Instant,
@@ -35,43 +29,50 @@ struct Model {
 fn mouse_pressed(_app: &App, model: &mut Model, button: MouseButton) {
     match button {
         MouseButton::Left => {
-            model.circles = generate_circles(&mut model.rng, NUM_CIRCLES);
+            model.circles = generate_circles(&mut model.rng, &model.window_size, NUM_CIRCLES);
         }
         _ => {}
     }
 }
 
+fn resized(_app: &App, model: &mut Model, new_size: Vec2) {
+    model.window_size = new_size
+}
+
 fn model(app: &App) -> Model {
+    let window_size = INITIAL_WINDOW_SIZE;
     let _window = app
         .new_window()
-        .size(WINDOW.w, WINDOW.h)
+        .size(window_size.x as u32, window_size.y as u32)
+        .resized(resized)
         .mouse_pressed(mouse_pressed)
         .view(view)
         .build();
     let mut rng = rand::rngs::StdRng::from_entropy();
 
-    let circles = generate_circles(&mut rng, NUM_CIRCLES);
+    let circles = generate_circles(&mut rng, &window_size, NUM_CIRCLES);
 
     Model {
         _window,
+        window_size,
         rng,
         circles,
         last_update: Instant::now(),
     }
 }
 
-fn generate_circles(rng: &mut rand::rngs::StdRng, num_circles: u16) -> Vec<Circle> {
+fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circles: u16) -> Vec<Circle> {
     let mut circles = vec![];
     for _n in 1..=num_circles {
-        let width_range = WINDOW.half_w() * 0.4;
-        let height_range = WINDOW.half_h() * 0.4;
+        let width_range = window_size.x / 2. * 0.4;
+        let height_range = window_size.y / 2. * 0.4;
         let pos = Vec2::new(
             rng.gen_range(-width_range..width_range), //
             rng.gen_range(-height_range..height_range), //
         );
         let vel = Vec2::new(
-            rng.gen_range(-1.0..1.0) * 80., // pixels/sec
-            rng.gen_range(-1.0..1.0) * 80., // pixels/sec
+            rng.gen_range(-1.0..1.0) * SPEED_LIMIT, // pixels/sec
+            rng.gen_range(-1.0..1.0) * SPEED_LIMIT, // pixels/sec
         );
         let radius = rng.gen_range(10..30) as f32;
         circles.push(Circle { pos, vel, radius });
@@ -92,22 +93,24 @@ fn update(_app: &App, model: &mut Model) {
 }
 
 fn handle_wall_bounce(model: &mut Model) {
+    let half_width = model.window_size.x / 2.;
+    let half_height = model.window_size.y / 2.;
     for circle in &mut model.circles {
-        if circle.pos.x - circle.radius < -WINDOW.half_w() {
+        if circle.pos.x - circle.radius < -half_width {
             circle.vel.x = -circle.vel.x;
-            circle.pos.x = -WINDOW.half_w() + circle.radius;
+            circle.pos.x = -half_width + circle.radius;
         }
-        if circle.pos.y - circle.radius < -WINDOW.half_h() {
+        if circle.pos.y - circle.radius < -half_height {
             circle.vel.y = -circle.vel.y;
-            circle.pos.y = -WINDOW.half_h() + circle.radius;
+            circle.pos.y = -half_height + circle.radius;
         }
-        if circle.pos.x + circle.radius > WINDOW.half_w() {
+        if circle.pos.x + circle.radius > half_width {
             circle.vel.x = -circle.vel.x;
-            circle.pos.x = WINDOW.half_w() - circle.radius;
+            circle.pos.x = half_width - circle.radius;
         }
-        if circle.pos.y + circle.radius > WINDOW.half_h() {
+        if circle.pos.y + circle.radius > half_height {
             circle.vel.y = -circle.vel.y;
-            circle.pos.y = WINDOW.half_h() - circle.radius;
+            circle.pos.y = half_height - circle.radius;
         }
     }
 }
