@@ -6,7 +6,7 @@ use std::time::Instant;
 const INITIAL_WINDOW_SIZE: Vec2 = Vec2::new( 1024., 768. );
 
 const NUM_CIRCLES: u16 = 50;
-const SPEED_LIMIT: f32 = 800.; // pixels/sec
+const SPEED_LIMIT: f32 = 500.; // pixels/sec
 
 fn main() {
     nannou::app(model).update(update).run();
