@@ -3,13 +3,17 @@ use rand::Rng;
 use rand::SeedableRng;
 use std::time::Instant;
 
-const INITIAL_WINDOW_SIZE: Vec2 = Vec2::new( 1024., 768. );
+const INITIAL_WINDOW_W: u32 = 1024;
+const INITIAL_WINDOW_H: u32 = 768;
 
-const NUM_CIRCLES: u16 = 50;
+const NUM_CIRCLES: u32 = 50;
 const SPEED_LIMIT: f32 = 500.; // pixels/sec
 
 fn main() {
-    nannou::app(model).update(update).run();
+    nannou::app(model)
+        .loop_mode(LoopMode::RefreshSync)
+        .update(update)
+        .run();
 }
 
 struct Circle {
@@ -19,11 +23,13 @@ struct Circle {
 }
 
 struct Model {
-    _window: Entity,
     window_size: Vec2,
     rng: rand::rngs::StdRng,
     circles: Vec<Circle>,
     last_update: Instant,
+    frames_this_second: u32,
+    fps: u32,
+    last_fps_reset: Instant,
 }
 
 fn mouse_pressed(_app: &App, model: &mut Model, button: MouseButton) {
@@ -40,10 +46,10 @@ fn resized(_app: &App, model: &mut Model, new_size: Vec2) {
 }
 
 fn model(app: &App) -> Model {
-    let window_size = INITIAL_WINDOW_SIZE;
+    let window_size = Vec2::new(INITIAL_WINDOW_W as f32, INITIAL_WINDOW_H as f32);
     let _window = app
         .new_window()
-        .size(window_size.x as u32, window_size.y as u32)
+        .size(INITIAL_WINDOW_W, INITIAL_WINDOW_H)
         .resized(resized)
         .mouse_pressed(mouse_pressed)
         .view(view)
@@ -53,15 +59,17 @@ fn model(app: &App) -> Model {
     let circles = generate_circles(&mut rng, &window_size, NUM_CIRCLES);
 
     Model {
-        _window,
         window_size,
         rng,
         circles,
         last_update: Instant::now(),
+        frames_this_second: 0,
+        fps: 0,
+        last_fps_reset: Instant::now()
     }
 }
 
-fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circles: u16) -> Vec<Circle> {
+fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circles: u32) -> Vec<Circle> {
     let mut circles = vec![];
     for _n in 1..=num_circles {
         let width_range = window_size.x / 2. * 0.4;
@@ -82,9 +90,10 @@ fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circle
     circles
 }
 
-fn update(_app: &App, model: &mut Model) {
+fn update(_app: &App, model: &mut Model, update: Update) {
     let now = Instant::now();
-    let delta = now.duration_since(model.last_update).as_secs_f32();
+    let delta = update.since_last.as_secs_f32();
+    // let delta = now.duration_since(model.last_update).as_secs_f32();
     model.last_update = now;
 
     for circle in &mut model.circles {
@@ -92,6 +101,14 @@ fn update(_app: &App, model: &mut Model) {
     }
 
     handle_wall_bounce(model);
+
+    model.frames_this_second += 1;
+
+    if now.duration_since(model.last_fps_reset).as_secs_f32() >= 1.0 {
+        model.fps = model.frames_this_second;
+        model.frames_this_second = 0;
+        model.last_fps_reset = now;
+    }
 }
 
 fn handle_wall_bounce(model: &mut Model) {
@@ -114,7 +131,7 @@ fn handle_wall_bounce(model: &mut Model) {
     }
 }
 
-fn view(app: &App, model: &Model) {
+fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
     let bg_color = Srgba::new(0.2, 0.1, 0.4, 1.0);
     draw.background().color(bg_color);
@@ -123,6 +140,16 @@ fn view(app: &App, model: &Model) {
     for circle in &model.circles {
         draw_circle(&draw, &circle.pos, circle.radius, circle_col);
     }
+
+
+    // FPS counter
+    let fps = model.fps;
+    draw.text(&format!("FPS: {fps}"))
+        .x_y(-model.window_size.x / 2. + 40., model.window_size.y / 2. - 10.)
+        .font_size(16)
+        .color(WHITE);
+
+    draw.to_frame(app, &frame).unwrap();
 }
 
 fn draw_circle(draw: &Draw, loc: &Vec2, radius: f32, col: Srgba) {

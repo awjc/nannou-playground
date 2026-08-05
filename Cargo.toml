@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-nannou="0.20"
+nannou="0.19"
 rand="0.8.7"
