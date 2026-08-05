@@ -1,13 +1,15 @@
-use nannou::noise::NoiseFn;
 use nannou::prelude::*;
+use noise::{NoiseFn, Perlin};
+
+// Moving dot field example
 
 fn main() {
     nannou::app(model).update(update).run();
 }
 
 struct Model {
-    points: Vec<Vector3>,
-    noise: nannou::noise::Perlin,
+    points: Vec<Vec3>,
+    noise: Perlin,
 }
 
 fn model(app: &App) -> Model {
@@ -18,7 +20,7 @@ fn model(app: &App) -> Model {
             p.push(vec3(x as f32, y as f32, 0.0));
         }
     }
-    let noise = nannou::noise::Perlin::new();
+    let noise = Perlin::new(1);
     Model {
         points: p,
         noise: noise,
@@ -42,7 +44,8 @@ fn view(app: &App, model: &Model, frame: Frame) {
     frame.clear(BLACK);
     let draw = app.draw();
     for point in &model.points {
-        let d = vec2(point.x, point.y).normalize();
+        let v = vec2(point.x, point.y);
+        let d = if v.length() > 0.0 { v.normalize() } else { Vec2::ZERO };
         let r = point.z * 6.0 + 6.0;
         let p = vec2(point.x, point.y) * 15.0 + d * point.z * 15.0;
         draw.ellipse()
@@ -54,10 +57,10 @@ fn view(app: &App, model: &Model, frame: Frame) {
     }
     draw.to_frame(app, &frame).unwrap();
 
-    if frame.nth() < 2000 {
-        let file_path = captured_frame_path(app, &frame);
-        app.main_window().capture_frame(file_path);
-    }
+    // if frame.nth() < 2000 {
+    //     let file_path = captured_frame_path(app, &frame);
+    //     app.main_window().capture_frame(file_path);
+    // }
 }
 
 fn captured_frame_path(app: &App, frame: &Frame) -> std::path::PathBuf {
