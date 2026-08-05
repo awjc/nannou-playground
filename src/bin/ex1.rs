@@ -1,66 +1,94 @@
 use nannou::prelude::*;
 use noise::{NoiseFn, Perlin};
 
-// Moving dot field example
+const CAPTURE: bool = false;
 
 fn main() {
     nannou::app(model).update(update).run();
 }
 
+struct Particle {
+    pos: Vec2,
+    vel: Vec2,
+}
+
+impl Particle {
+    fn new(x: f32, y: f32) -> Particle {
+        Particle {
+            pos: vec2(x, y),
+            vel: vec2(0., 0.),
+        }
+    }
+
+    fn update(&mut self, dir: Vec2) {
+        self.pos += self.vel;
+        self.vel += dir;
+        self.vel *= 0.8;
+    }
+}
+
 struct Model {
-    points: Vec<Vec3>,
-    noise: Perlin,
+    particles: Vec<Particle>,
 }
 
 fn model(app: &App) -> Model {
     app.new_window().size(600, 600).view(view).build().unwrap();
+
+    let r = app.window_rect().right() as f32;
+    let l = app.window_rect().left() as f32;
+
+    let w = l - r;
+    let t = app.window_rect().top() as f32;
+    let b = app.window_rect().bottom() as f32;
+
+    let h = t - b;
+
     let mut p = vec![];
-    for x in -15..15 {
-        for y in -15..15 {
-            p.push(vec3(x as f32, y as f32, 0.0));
-        }
+    for _i in 0..2000 {
+        let x = random_f32() * w + r;
+        let y = random_f32() * h + b;
+        p.push(Particle::new(x, y));
     }
-    let noise = Perlin::new(1);
-    Model {
-        points: p,
-        noise: noise,
-    }
+
+    Model { particles: p }
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    let t = (app.elapsed_frames() as f32) * 0.03;
-    let mut pn = vec![];
+    let noise = Perlin::new(1);
+    let t = app.elapsed_frames() as f64 / 100.;
+    for i in 0..model.particles.len() {
+        let p = &mut model.particles[i];
+        let x = noise.get([
+            p.pos.x as f64 / 128.,
+            p.pos.y as f64 / 137.,
+            t + i as f64 / 1000.,
+        ]);
+        let y = noise.get([
+            -p.pos.y as f64 / 128.,
+            p.pos.x as f64 / 137.,
+            t + i as f64 / 1000.,
+        ]);
 
-    for p in &model.points {
-        let r = model
-            .noise
-            .get([p.x as f64 / 10.0, p.y as f64 / 10.0, t as f64]);
-        pn.push(vec3(p.x, p.y, r as f32));
+        let a = vec2(x as f32, y as f32);
+        p.update(a);
     }
-    model.points = pn;
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
-    frame.clear(BLACK);
     let draw = app.draw();
-    for point in &model.points {
-        let v = vec2(point.x, point.y);
-        let d = if v.length() > 0.0 { v.normalize() } else { Vec2::ZERO };
-        let r = point.z * 6.0 + 6.0;
-        let p = vec2(point.x, point.y) * 15.0 + d * point.z * 15.0;
+    let t = (app.elapsed_frames() as f32) * 0.02;
+    let w = (t * 0.832).cos();
+    for p in &model.particles {
         draw.ellipse()
-            .x_y(p.x, p.y)
-            .w_h(r, r)
-            .color(BLACK)
-            .stroke(hsla(1.0 - point.z as f32 / 2.0 + 0.5, 1.0, 0.5, 1.0))
-            .stroke_weight(1.0);
+            .xy(p.pos)
+            .w_h(2.0, 2.0)
+            .color(hsla(0.1, 1. + w, 5., 0.01));
     }
     draw.to_frame(app, &frame).unwrap();
-
-    // if frame.nth() < 2000 {
-    //     let file_path = captured_frame_path(app, &frame);
-    //     app.main_window().capture_frame(file_path);
-    // }
+    if CAPTURE {
+        let file_path = captured_frame_path(app, &frame);
+        app.main_window().capture_frame(file_path);
+    }
 }
 
 fn captured_frame_path(app: &App, frame: &Frame) -> std::path::PathBuf {
