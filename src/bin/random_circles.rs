@@ -26,7 +26,6 @@ struct Model {
     window_size: Vec2,
     rng: rand::rngs::StdRng,
     circles: Vec<Circle>,
-    last_update: Instant,
     frames_this_second: u32,
     fps: u32,
     last_fps_reset: Instant,
@@ -62,7 +61,6 @@ fn model(app: &App) -> Model {
         window_size,
         rng,
         circles,
-        last_update: Instant::now(),
         frames_this_second: 0,
         fps: 0,
         last_fps_reset: Instant::now()
@@ -93,8 +91,6 @@ fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circle
 fn update(_app: &App, model: &mut Model, update: Update) {
     let now = Instant::now();
     let delta = update.since_last.as_secs_f32();
-    // let delta = now.duration_since(model.last_update).as_secs_f32();
-    model.last_update = now;
 
     for circle in &mut model.circles {
         circle.pos += circle.vel * delta;
@@ -140,7 +136,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
     for circle in &model.circles {
         draw_circle(&draw, &circle.pos, circle.radius, circle_col);
     }
-
 
     // FPS counter
     let fps = model.fps;
