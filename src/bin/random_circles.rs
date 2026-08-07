@@ -118,9 +118,9 @@ fn handle_wall_bounce(model: &mut Model) {
     let half_height = model.window_size.y / 2.;
     for circle in &mut model.circles {
         // big balls decay more quickly due to inertia or something
-        let lerp = 1. - (circle.radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS);
-        let min_decay = 0.90;
-        let max_decay = 0.99;
+        let lerp = 1. - ((circle.radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)).powf(2.);
+        let min_decay = 0.80;
+        let max_decay = 0.98;
         let scaled_decay = min_decay + lerp * (max_decay - min_decay);
         if circle.pos.x - circle.radius < -half_width {
             circle.vel.x = -circle.vel.x;
