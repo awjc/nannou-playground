@@ -98,8 +98,12 @@ fn update(_app: &App, model: &mut Model, update: Update) {
 
     handle_wall_bounce(model);
 
-    model.frames_this_second += 1;
+    let gravity = model.rng.gen_range(4.0..8.0);
+    for circle in &mut model.circles {
+        circle.vel.y -= gravity;
+    }
 
+    model.frames_this_second += 1;
     if now.duration_since(model.last_fps_reset).as_secs_f32() >= 1.0 {
         model.fps = model.frames_this_second;
         model.frames_this_second = 0;
