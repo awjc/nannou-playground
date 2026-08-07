@@ -8,6 +8,8 @@ const INITIAL_WINDOW_H: u32 = 768;
 
 const NUM_CIRCLES: u32 = 50;
 const SPEED_LIMIT: f32 = 500.; // pixels/sec
+const MIN_RADIUS: f32 = 10.;
+const MAX_RADIUS: f32 = 30.;
 
 fn main() {
     nannou::app(model)
@@ -82,7 +84,7 @@ fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circle
             speed * vel_dir.cos(),
             speed * vel_dir.sin(),
         );
-        let radius = rng.gen_range(10..30) as f32;
+        let radius = rng.gen_range(MIN_RADIUS..MAX_RADIUS) as f32;
         circles.push(Circle { pos, vel, radius });
     }
     circles
@@ -115,18 +117,25 @@ fn handle_wall_bounce(model: &mut Model) {
     let half_width = model.window_size.x / 2.;
     let half_height = model.window_size.y / 2.;
     for circle in &mut model.circles {
+        // big balls decay more quickly due to inertia or something
+        let lerp = 1. - (circle.radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS);
+        let min_decay = 0.90;
+        let max_decay = 0.99;
+        let scaled_decay = min_decay + lerp * (max_decay - min_decay);
         if circle.pos.x - circle.radius < -half_width {
             circle.vel.x = -circle.vel.x;
             circle.pos.x = -half_width + circle.radius;
         } else if circle.pos.y - circle.radius < -half_height {
             circle.vel.y = -circle.vel.y;
             circle.pos.y = -half_height + circle.radius;
+            circle.vel.y *= scaled_decay;
         } else if circle.pos.x + circle.radius > half_width {
             circle.vel.x = -circle.vel.x;
             circle.pos.x = half_width - circle.radius;
         } else if circle.pos.y + circle.radius > half_height {
             circle.vel.y = -circle.vel.y;
             circle.pos.y = half_height - circle.radius;
+            circle.vel.y *= scaled_decay;
         }
     }
 }
