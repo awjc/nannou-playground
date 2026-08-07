@@ -100,7 +100,7 @@ fn update(_app: &App, model: &mut Model, update: Update) {
 
     handle_wall_bounce(model);
 
-    let gravity = model.rng.gen_range(4.0..8.0);
+    let gravity = 6.0;
     for circle in &mut model.circles {
         circle.vel.y -= gravity;
     }
