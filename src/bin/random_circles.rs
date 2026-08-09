@@ -7,9 +7,9 @@ const INITIAL_WINDOW_W: u32 = 1024;
 const INITIAL_WINDOW_H: u32 = 768;
 
 const NUM_CIRCLES: u32 = 50;
-const SPEED_LIMIT: f32 = 500.; // pixels/sec
-const MIN_RADIUS: f32 = 10.;
-const MAX_RADIUS: f32 = 30.;
+const SPEED_LIMIT: f32 = 500.0; // pixels/sec
+const MIN_RADIUS: f32 = 10.0;
+const MAX_RADIUS: f32 = 30.0;
 
 fn main() {
     nannou::app(model)
@@ -72,14 +72,14 @@ fn model(app: &App) -> Model {
 fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circles: u32) -> Vec<Circle> {
     let mut circles = vec![];
     for _n in 1..=num_circles {
-        let width_range = window_size.x / 2. * 0.4;
-        let height_range = window_size.y / 2. * 0.4;
+        let width_range = window_size.x / 2.0 * 0.4;
+        let height_range = window_size.y / 2.0 * 0.4;
         let pos = Vec2::new(
             rng.gen_range(-width_range..width_range),
             rng.gen_range(-height_range..height_range),
         );
         let speed = rng.gen_range(-1.0..1.0) * SPEED_LIMIT;  // pixels/sec
-        let vel_dir = rng.gen_range(0.0..1.0) * 2. * PI;
+        let vel_dir = rng.gen_range(0.0..1.0) * 2.0 * PI;
         let vel = Vec2::new(
             speed * vel_dir.cos(),
             speed * vel_dir.sin(),
@@ -114,11 +114,11 @@ fn update(_app: &App, model: &mut Model, update: Update) {
 }
 
 fn handle_wall_bounce(model: &mut Model) {
-    let half_width = model.window_size.x / 2.;
-    let half_height = model.window_size.y / 2.;
+    let half_width = model.window_size.x / 2.0;
+    let half_height = model.window_size.y / 2.0;
     for circle in &mut model.circles {
         // big balls decay more quickly due to inertia or something
-        let lerp = 1. - ((circle.radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)).powf(2.);
+        let lerp = 1.0 - ((circle.radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)).powf(2.0);
         let min_decay = 0.80;
         let max_decay = 0.98;
         let scaled_decay = min_decay + lerp * (max_decay - min_decay);
@@ -153,7 +153,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     // FPS counter
     let fps = model.fps;
     draw.text(&format!("FPS: {fps}"))
-        .x_y(-model.window_size.x / 2. + 40., model.window_size.y / 2. - 10.)
+        .x_y(-model.window_size.x / 2.0 + 40.0, model.window_size.y / 2.0 - 10.0)
         .font_size(16)
         .color(WHITE);
 
@@ -163,7 +163,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 fn draw_circle(draw: &Draw, loc: &Vec2, radius: f32, col: Srgba) {
     draw.ellipse()
         .x_y(loc.x, loc.y)
-        .w_h(radius * 2., radius * 2.)
+        .w_h(radius * 2.0, radius * 2.0)
         .color(col)
         .stroke_weight(1.0);
 }
