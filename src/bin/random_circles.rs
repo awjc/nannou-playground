@@ -8,9 +8,9 @@ const INITIAL_WINDOW_H: u32 = 768;
 
 const NUM_CIRCLES: u32 = 50;
 const SPEED_LIMIT: f32 = 500.0; // pixels/sec
-const GRAVITY: f32 = 1000.0;
-const BOUNCE_DECAY_MIN: f32 = 0.80;
-const BOUNCE_DECAY_MAX: f32 = 0.98;
+const GRAVITY: f32 = 2000.0;
+const BOUNCE_DECAY_MIN: f32 = 0.75;
+const BOUNCE_DECAY_MAX: f32 = 0.96;
 const MIN_RADIUS: f32 = 10.0;
 const MAX_RADIUS: f32 = 30.0;
 
