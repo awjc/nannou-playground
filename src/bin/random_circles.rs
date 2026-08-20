@@ -8,6 +8,9 @@ const INITIAL_WINDOW_H: u32 = 768;
 
 const NUM_CIRCLES: u32 = 50;
 const SPEED_LIMIT: f32 = 500.0; // pixels/sec
+const GRAVITY: f32 = 1000.0;
+const BOUNCE_DECAY_MIN: f32 = 0.80;
+const BOUNCE_DECAY_MAX: f32 = 0.98;
 const MIN_RADIUS: f32 = 10.0;
 const MAX_RADIUS: f32 = 30.0;
 
@@ -100,9 +103,8 @@ fn update(_app: &App, model: &mut Model, update: Update) {
 
     handle_wall_bounce(model);
 
-    let gravity = 6.0;
     for circle in &mut model.circles {
-        circle.vel.y -= gravity;
+        circle.vel.y -= GRAVITY * delta;
     }
 
     model.frames_this_second += 1;
@@ -117,25 +119,23 @@ fn handle_wall_bounce(model: &mut Model) {
     let half_width = model.window_size.x / 2.0;
     let half_height = model.window_size.y / 2.0;
     for circle in &mut model.circles {
-        // big balls decay more quickly due to inertia or something
+        // fraction of velocity kept after a bounce; bigger balls lose more per bounce
         let lerp = 1.0 - ((circle.radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)).powf(2.0);
-        let min_decay = 0.80;
-        let max_decay = 0.98;
-        let scaled_decay = min_decay + lerp * (max_decay - min_decay);
+        let scaled_decay = BOUNCE_DECAY_MIN + lerp * (BOUNCE_DECAY_MAX - BOUNCE_DECAY_MIN);
+        // horizontal bounces do not decay
         if circle.pos.x - circle.radius < -half_width {
             circle.vel.x = -circle.vel.x;
             circle.pos.x = -half_width + circle.radius;
-        } else if circle.pos.y - circle.radius < -half_height {
-            circle.vel.y = -circle.vel.y;
-            circle.pos.y = -half_height + circle.radius;
-            circle.vel.y *= scaled_decay;
         } else if circle.pos.x + circle.radius > half_width {
             circle.vel.x = -circle.vel.x;
             circle.pos.x = half_width - circle.radius;
+        }
+        if circle.pos.y - circle.radius < -half_height {
+            circle.vel.y = -circle.vel.y * scaled_decay;
+            circle.pos.y = -half_height + circle.radius;
         } else if circle.pos.y + circle.radius > half_height {
-            circle.vel.y = -circle.vel.y;
+            circle.vel.y = -circle.vel.y * scaled_decay;
             circle.pos.y = half_height - circle.radius;
-            circle.vel.y *= scaled_decay;
         }
     }
 }
