@@ -81,7 +81,7 @@ fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circle
             rng.gen_range(-width_range..width_range),
             rng.gen_range(-height_range..height_range),
         );
-        let speed = rng.gen_range(-1.0..1.0) * SPEED_LIMIT;  // pixels/sec
+        let speed = rng.gen_range(0.0..1.0) * SPEED_LIMIT;  // pixels/sec
         let vel_dir = rng.gen_range(0.0..1.0) * 2.0 * PI;
         let vel = Vec2::new(
             speed * vel_dir.cos(),
