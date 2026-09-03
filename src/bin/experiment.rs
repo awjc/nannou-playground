@@ -2,8 +2,9 @@
 
 use nannou::prelude::*;
 
-const NUM_PARTICLES: u32 = 500;
+const NUM_PARTICLES: u32 = 1500;
 const MAX_SPEED: f32 = 2.5;
+const PARTICLE_SIZE: f32 = 3.0;
 
 struct Particle {
     pos: Vec2,
@@ -18,7 +19,11 @@ struct Model {
 }
 
 fn main() {
-    nannou::app(model).update(update).view(view).run();
+    nannou::app(model)
+        .loop_mode(LoopMode::RefreshSync)
+        .update(update)
+        .view(view)
+        .run();
 }
 
 fn model(app: &App) -> Model {
@@ -83,7 +88,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     for particle in &model.particles {
         draw.ellipse()
             .x_y(particle.pos.x, particle.pos.y)
-            .w_h(3.0, 3.0)
+            .w_h(PARTICLE_SIZE, PARTICLE_SIZE)
             .color(particle.color);
     }
 
