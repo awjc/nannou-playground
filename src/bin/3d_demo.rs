@@ -1,24 +1,17 @@
 use nannou::prelude::*;
 
 /// `MiniEngine` encapsulates the 3D mathematics required to project 
-/// 3D world coordinates onto Nannou's 2D primitive drawing API.
+/// 3D objects into Nannou's 2D primitive drawing API.
 struct MiniEngine {
-    /// The combined View-Projection matrix (Projection * View)
     camera_transform: Mat4,
-    /// Current window dimensions for scaling NDC to screen space
     window_size: Vec2,
 }
 
 impl MiniEngine {
-    /// Creates a new engine instance by defining a camera's properties.
     fn new(app: &App, eye: Vec3, target: Vec3, up: Vec3) -> Self {
         let rect = app.window_rect();
         let aspect = rect.w() / rect.h();
-        
-        // 1. Create the View Matrix (where the camera is and where it looks)
         let view_mat = Mat4::look_at_rh(eye, target, up);
-        
-        // 2. Create the Projection Matrix (simulates perspective/depth)
         let proj_mat = Mat4::perspective_rh(std::f32::consts::PI / 4.0, aspect, 0.1, 2000.0);
         
         Self {
@@ -27,73 +20,43 @@ impl MiniEngine {
         }
     }
 
-    /// `draw_mesh` is the core rendering function. It takes 3D geometry, 
-    /// applies the object's local transform, then the camera's transform,
-    /// and finally projects the result into 2D screen space.
     fn draw_mesh(&self, draw: &Draw, vertices: &[Vec3], indices: &[usize], transform: Mat4, color: Srgb<u8>) {
-        // Step 1: Project all 3D vertices into 2D screen coordinates
         let projected_vertices: Vec<Vec2> = vertices.iter()
             .map(|&v| {
-                // Apply Object Transform (Scale/Rotate/Translate)
                 let transformed = transform * vec4(v.x, v.y, v.z, 1.0);
-                
-                // Apply Camera Transform (View/Projection)
                 let p_cam = self.camera_transform * transformed;
-                
-                // Convert from Normalized Device Coordinates (NDC) [-1, 1] 
-                // to actual Window Screen Space
                 vec2(p_cam.x / p_cam.w, p_cam.y / p_cam.w) * self.window_size / 2.0
             })
             .collect();
 
-        // Step 2: Render the triangles using the projected 2D points
         for chunk in indices.chunks(3) {
             if chunk.len() == 3 {
                 let p1 = projected_vertices[chunk[0]];
                 let p2 = projected_vertices[chunk[1]];
                 let p3 = projected_vertices[chunk[2]];
-                
-                draw.polygon()
-                    .points([p1, p2, p3])
-                    .color(color);
+                draw.polygon().points([p1, p2, p3]).color(color);
             }
         }
     }
 }
 
-/// `MeshObject` represents a 3D entity in the world.
+/// A trait representing any object that can be updated and rendered in our 3D engine.
+trait SceneObject {
+    fn update(&mut self, dt: f32);
+    fn draw(&self, draw: &Draw, engine: &MiniEngine);
+}
+
+/// `MeshObject` is the base implementation for 3D entities composed of a mesh.
 struct MeshObject {
-    /// The raw local-space geometry
     vertices: Vec<Vec3>,
-    /// How vertices are connected to form triangles
     indices: Vec<usize>,
-    /// World position
     position: Vec3,
-    /// Rotation angles (Euler angles: X, Y, Z)
     rotation: Vec3,
-    /// Surface color
     color: Srgb<u8>,
 }
 
 impl MeshObject {
-    /// Constructor for a standard cube primitive.
-    fn new_cube(size: f32, color: Srgb<u8>) -> Self {
-        let s = size / 2.0;
-        // Define the 8 corners of the cube
-        let vertices = vec![
-            vec3(-s, -s, -s), vec3(s, -s, -s), vec3(s, s, -s), vec3(-s, s, -s),
-            vec3(-s, -s, s), vec3(s, -s, s), vec3(s, s, s), vec3(-s, s, s),
-        ];
-        // Define triangles (2 per face = 12 triangles total)
-        let indices = vec![
-            0, 1, 2, 0, 2, 3, // Front face
-            4, 5, 6, 4, 6, 7, // Back face
-            0, 4, 7, 0, 7, 3, // Left face
-            1, 5, 6, 1, 6, 2, // Right face
-            3, 2, 6, 3, 6, 7, // Top face
-            0, 1, 5, 0, 5, 4, // Bottom face
-        ];
-
+    fn new(vertices: Vec<Vec3>, indices: Vec<usize>, color: Srgb<u8>) -> Self {
         Self {
             vertices,
             indices,
@@ -103,30 +66,57 @@ impl MeshObject {
         }
     }
 
-    /// Calculates the 4x4 transformation matrix for this object.
     fn get_transform(&self) -> Mat4 {
         Mat4::from_translation(self.position) *
         Mat4::from_rotation_x(self.rotation.x) *
         Mat4::from_rotation_y(self.rotation.y) *
         Mat4::from_rotation_z(self.rotation.z)
     }
+}
 
-    /// Renders the object using the provided engine.
+/// A specific implementation of a Cube.
+struct Cube {
+    inner: MeshObject,
+}
+
+impl Cube {
+    fn new(position: Vec3, size: f32, color: Srgb<u8>) -> Self {
+        let s = size / 2.0;
+        let vertices = vec![
+            vec3(-s, -s, -s), vec3(s, -s, -s), vec3(s, s, -s), vec3(-s, s, -s),
+            vec3(-s, -s, s), vec3(s, -s, s), vec3(s, s, s), vec3(-s, s, s),
+        ];
+        let indices = vec![
+            0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 0, 4, 7, 0, 7, 3,
+            1, 5, 6, 1, 6, 2, 3, 2, 6, 3, 6, 7, 0, 1, 5, 0, 5, 4,
+        ];
+
+        let mut inner = MeshObject::new(vertices, indices, color);
+        inner.position = position;
+        Self { inner }
+    }
+}
+
+impl SceneObject for Cube {
+    fn update(&mut self, dt: f32) {
+        self.inner.rotation.y += dt;
+        self.inner.rotation.x += dt * 0.5;
+    }
+
     fn draw(&self, draw: &Draw, engine: &MiniEngine) {
         engine.draw_mesh(
             draw, 
-            &self.vertices, 
-            &self.indices, 
-            self.get_transform(), 
-            self.color
+            &self.inner.vertices, 
+            &self.inner.indices, 
+            self.inner.get_transform(), 
+            self.inner.color
         );
     }
 }
 
 struct Model {
     engine: MiniEngine,
-    cube: MeshObject,
-    rotation_timer: f32,
+    objs_in_scene: Vec<Box<dyn SceneObject>>,
 }
 
 fn main() {
@@ -134,44 +124,41 @@ fn main() {
 }
 
 fn model(app: &App) -> Model {
-    app.new_window()
-        .size(1024, 768)
-        .view(view)
-        .build()
-        .unwrap();
+    app.new_window().size(1024, 768).view(view).build().unwrap();
 
-    // Initialize Engine with a camera looking at the origin
     let engine = MiniEngine::new(
         app, 
-        vec3(400.0, 400.0, 400.0), // Camera Position (Eye)
-        vec3(0.0, 0.0, 0.0),       // Target point
-        vec3(0.0, 1.0, 0.0)        // Up vector
+        vec3(400.0, 400.0, 400.0), 
+        vec3(0.0, 0.0, 0.0),       
+        vec3(0.0, 1.0, 0.0)        
     );
 
-    let cube = MeshObject::new_cube(150.0, STEELBLUE);
+    let mut objs_in_scene: Vec<Box<dyn SceneObject>> = Vec::new();
+    
+    objs_in_scene.push(Box::new(Cube::new(vec3(0.0, 0.0, 0.0), 150.0, STEELBLUE)));
+    objs_in_scene.push(Box::new(Cube::new(vec3(200.0, 100.0, -50.0), 50.0, ORANGE)));
+    objs_in_scene.push(Box::new(Cube::new(vec3(-250.0, -150.0, 100.0), 80.0, GREEN)));
 
     Model {
         engine,
-        cube,
-        rotation_timer: 0.0,
+        objs_in_scene,
     }
 }
 
 fn update(_app: &App, model: &mut Model, update: Update) {
     let dt = update.since_last.as_secs_f32();
-    model.rotation_timer += dt;
-    
-    // Animate the cube's rotation
-    model.cube.rotation.y = model.rotation_timer;
-    model.cube.rotation.x = model.rotation_timer * 0.5;
+    for obj in &mut model.objs_in_scene {
+        obj.update(dt);
+    }
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
     draw.background().color(BLACK);
 
-    // Render all objects in the world
-    model.cube.draw(&draw, &model.engine);
+    for obj in &model.objs_in_scene {
+        obj.draw(&draw, &model.engine);
+    }
 
     draw.to_frame(app, &frame).unwrap();
 }
