@@ -24,7 +24,8 @@ fn main() {
 struct Circle {
     pos: Vec2,
     vel: Vec2,
-    radius: f32
+    radius: f32,
+    decay: f32,
 }
 
 struct Model {
@@ -74,21 +75,24 @@ fn model(app: &App) -> Model {
 
 fn generate_circles(rng: &mut rand::rngs::StdRng, window_size: &Vec2, num_circles: u32) -> Vec<Circle> {
     let mut circles = vec![];
+    let width_range = window_size.x / 2.0 * 0.4;
+    let height_range = window_size.y / 2.0 * 0.4;
     for _n in 1..=num_circles {
-        let width_range = window_size.x / 2.0 * 0.4;
-        let height_range = window_size.y / 2.0 * 0.4;
         let pos = Vec2::new(
             rng.gen_range(-width_range..width_range),
             rng.gen_range(-height_range..height_range),
         );
-        let speed = rng.gen_range(0.0..1.0) * SPEED_LIMIT;  // pixels/sec
-        let vel_dir = rng.gen_range(0.0..1.0) * 2.0 * PI;
+        let speed = rng.gen_range(-1.0..1.0) * SPEED_LIMIT;  // pixels/sec
+        let vel_dir = rng.gen_range(0.0..2.0 * PI);
         let vel = Vec2::new(
             speed * vel_dir.cos(),
             speed * vel_dir.sin(),
         );
-        let radius = rng.gen_range(MIN_RADIUS..MAX_RADIUS) as f32;
-        circles.push(Circle { pos, vel, radius });
+        let radius = rng.gen_range(MIN_RADIUS..MAX_RADIUS);
+        // fraction of velocity kept after a bounce; bigger balls lose more per bounce. precomputed now to not have to do it every frame
+        let lerp = 1.0 - ((radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)).powf(2.0);
+        let decay = BOUNCE_DECAY_MIN + lerp * (BOUNCE_DECAY_MAX - BOUNCE_DECAY_MIN);
+        circles.push(Circle { pos, vel, radius, decay });
     }
     circles
 }
@@ -119,9 +123,6 @@ fn handle_wall_bounce(model: &mut Model) {
     let half_width = model.window_size.x / 2.0;
     let half_height = model.window_size.y / 2.0;
     for circle in &mut model.circles {
-        // fraction of velocity kept after a bounce; bigger balls lose more per bounce
-        let lerp = 1.0 - ((circle.radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)).powf(2.0);
-        let scaled_decay = BOUNCE_DECAY_MIN + lerp * (BOUNCE_DECAY_MAX - BOUNCE_DECAY_MIN);
         // horizontal bounces do not decay
         if circle.pos.x - circle.radius < -half_width {
             circle.vel.x = -circle.vel.x;
@@ -131,10 +132,10 @@ fn handle_wall_bounce(model: &mut Model) {
             circle.pos.x = half_width - circle.radius;
         }
         if circle.pos.y - circle.radius < -half_height {
-            circle.vel.y = -circle.vel.y * scaled_decay;
+            circle.vel.y = -circle.vel.y * circle.decay;
             circle.pos.y = -half_height + circle.radius;
         } else if circle.pos.y + circle.radius > half_height {
-            circle.vel.y = -circle.vel.y * scaled_decay;
+            circle.vel.y = -circle.vel.y * circle.decay;
             circle.pos.y = half_height - circle.radius;
         }
     }
