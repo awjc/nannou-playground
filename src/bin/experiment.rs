@@ -26,9 +26,17 @@ fn main() {
         .run();
 }
 
+fn resized(_app: &App, model: &mut Model, new_size: Vec2) {
+    model.window_size = new_size
+}
+
 fn model(app: &App) -> Model {
     let window_size = Vec2::new(1024.0, 768.0);
-    let _window = app.new_window().size(1024, 768).view(view).build();
+    let _window = app
+        .new_window()
+        .size(1024, 768)
+        .resized(resized)
+        .build();
 
     let mut particles = vec![];
     for _ in 0..NUM_PARTICLES {
