@@ -48,41 +48,43 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let proj_mat = Mat4::perspective_rh(std::f32::consts::PI / 4.0, aspect, 0.1, 2000.0);
     let camera_transform = proj_mat * view_mat;
 
-    // Draw a rotating cube using a mesh of lines
+    // 1. Draw rotating cube using triangles
     let s = 100.0;
     let cube_rot = Mat4::from_rotation_y(model.rotation) * Mat4::from_rotation_x(model.rotation * 0.5);
     
-    let vertices = [
+    let v = [
         vec3(-s, -s, -s), vec3(s, -s, -s), vec3(s, s, -s), vec3(-s, s, -s),
         vec3(-s, -s, s), vec3(s, -s, s), vec3(s, s, s), vec3(-s, s, s),
     ];
-    let edges = [
-        (0, 1), (1, 2), (2, 3), (3, 0),
-        (4, 5), (5, 6), (6, 7), (7, 4),
-        (0, 4), (1, 5), (2, 6), (3, 7),
+
+    let indices = [
+        0, 1, 2, 0, 2, 3, // Front
+        4, 5, 6, 4, 6, 7, // Back
+        0, 4, 7, 0, 7, 3, // Left
+        1, 5, 6, 1, 6, 2, // Right
+        3, 2, 6, 3, 6, 7, // Top
+        0, 1, 5, 0, 5, 4, // Bottom
     ];
 
-    for (i, j) in edges {
-        let p1_4 = cube_rot * vec4(vertices[i].x, vertices[i].y, vertices[i].z, 1.0);
-        let p2_4 = cube_rot * vec4(vertices[j].x, vertices[j].y, vertices[j].z, 1.0);
+    let mut mesh_vertices = Vec::new();
+    for i in 0..8 {
+        let p_4 = cube_rot * vec4(v[i].x, v[i].y, v[i].z, 1.0);
+        let p_cam = camera_transform * p_4;
+        let p_screen = vec2(p_cam.x / p_cam.w, p_cam.y / p_cam.w) * rect.w() / 2.0;
+        mesh_vertices.push(p_screen);
+    }
+
+    for chunk in indices.chunks(3) {
+        let p1 = mesh_vertices[chunk[0] as usize];
+        let p2 = mesh_vertices[chunk[1] as usize];
+        let p3 = mesh_vertices[chunk[2] as usize];
         
-        // Transform points to NDC
-        let p1_ndc = camera_transform * p1_4;
-        let p2_ndc = camera_transform * p2_4;
-
-        // Convert NDC to screen space manually to use draw.line()
-        // NDC is [-1, 1]. We need to scale it to the window size.
-        let p1_screen = vec2(p1_ndc.x / p1_ndc.w, p1_ndc.y / p1_ndc.w) * rect.w() / 2.0;
-        let p2_screen = vec2(p2_ndc.x / p2_ndc.w, p2_ndc.y / p2_ndc.w) * rect.w() / 2.0;
-
-        draw.line()
-            .start(p1_screen)
-            .end(p2_screen)
-            .weight(2.0)
+        draw.polygon()
+            .points([p1, p2, p3])
             .color(STEELBLUE);
     }
 
-    // Draw moving sphere using a point cloud of small circles
+    // 2. Draw moving sphere using a point cloud
     let sphere_radius = 40.0;
     for i in 0..12 {
         let phi = std::f32::consts::PI * (i as f32 / 12.0);
