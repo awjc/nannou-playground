@@ -1,20 +1,31 @@
-// Gemma 4's experiment
+//! A particle simulation with a trigonometric flow field.
 
 use nannou::prelude::*;
 
+/// Total number of particles to simulate.
 const NUM_PARTICLES: u32 = 1500;
+/// Maximum speed for particle movement.
 const MAX_SPEED: f32 = 2.5;
+/// Diameter of the particles.
 const PARTICLE_SIZE: f32 = 3.0;
 
+/// Represents a single particle.
 struct Particle {
+    /// Position of the particle.
     pos: Vec2,
+    /// Velocity of the particle.
     vel: Vec2,
+    /// Color of the particle.
     color: Srgba,
 }
 
+/// The main application state.
 struct Model {
+    /// The list of particles.
     particles: Vec<Particle>,
+    /// The current size of the window.
     window_size: Vec2,
+    /// Elapsed time in seconds.
     time: f32,
 }
 
@@ -26,10 +37,12 @@ fn main() {
         .run();
 }
 
+/// Handles window resizing events.
 fn resized(_app: &App, model: &mut Model, new_size: Vec2) {
     model.window_size = new_size
 }
 
+/// Initializes the application model.
 fn model(app: &App) -> Model {
     let window_size = Vec2::new(1024.0, 768.0);
     let _window = app
@@ -57,6 +70,7 @@ fn model(app: &App) -> Model {
     }
 }
 
+/// Updates the particle positions and velocities.
 fn update(_app: &App, model: &mut Model, update: Update) {
     let dt = update.since_last.as_secs_f32();
     model.time += dt;
@@ -89,6 +103,7 @@ fn update(_app: &App, model: &mut Model, update: Update) {
     }
 }
 
+/// Renders the particles to the screen.
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
     draw.background().color(Srgba::new(0.02, 0.02, 0.05, 1.0));
