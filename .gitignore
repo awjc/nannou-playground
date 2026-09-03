@@ -21,5 +21,8 @@ target
 #.idea/
 
 
+.opencode
+
+
 frames/
 .DS_Store
