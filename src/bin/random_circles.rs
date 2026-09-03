@@ -102,14 +102,14 @@ fn update(_app: &App, model: &mut Model, update: Update) {
     let delta = update.since_last.as_secs_f32();
 
     for circle in &mut model.circles {
+        circle.vel.y -= GRAVITY * delta;
+    }
+
+    for circle in &mut model.circles {
         circle.pos += circle.vel * delta;
     }
 
     handle_wall_bounce(model);
-
-    for circle in &mut model.circles {
-        circle.vel.y -= GRAVITY * delta;
-    }
 
     model.frames_this_second += 1;
     if now.duration_since(model.last_fps_reset).as_secs_f32() >= 1.0 {
